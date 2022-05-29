@@ -1,2 +1,4 @@
 /target
 Cargo.lock
+newsletter.config
+newsletter.sqlite

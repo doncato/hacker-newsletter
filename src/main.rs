@@ -1,6 +1,4 @@
-use chrono::{self, Local};
 use confy;
-use env_logger::Builder;
 use lettre::{
     smtp::{
         authentication::{Credentials, Mechanism},
@@ -14,8 +12,8 @@ use native_tls::{Protocol, TlsConnector};
 use reqwest::blocking::Client;
 use rusqlite::Connection;
 use serde_derive::{Deserialize, Serialize};
+use simplelog::*;
 use std::fs;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 
 const PAGE_URL: &'static str = "https://news.ycombinator.com/item?id=";
@@ -31,6 +29,7 @@ struct AppConfig {
     database_path: PathBuf,
     content_html_path: PathBuf,
     unsubscribe_url: String,
+    log_path: PathBuf,
 }
 impl ::std::default::Default for AppConfig {
     fn default() -> Self {
@@ -41,6 +40,7 @@ impl ::std::default::Default for AppConfig {
             database_path: Path::new("./newsletter.sqlite").to_path_buf(),
             content_html_path: Path::new("./message.html").to_path_buf(),
             unsubscribe_url: "localhost/unsubscribe/?email=".to_string(),
+            log_path: Path::new("/var/log/hacker-newsletter.log").to_path_buf(),
         }
     }
 }
@@ -214,21 +214,13 @@ fn get_posts(client: &Client, count: u8) -> Vec<Post> {
         .collect()
 }
 
-fn init_logger() {
-    Builder::new()
-        .format(|buf, record| {
-            writeln!(
-                buf,
-                "[{}] {} - {}: {}",
-                record.level(),
-                Local::now().format("%d/%m/%y %H:%M:%S"),
-                record.target(),
-                record.args(),
-            )
-        })
-        .filter(None, LevelFilter::Debug)
-        //.filter(None, LevelFilter::Info)
-        .init();
+fn init_logger(log_path: &Path) {
+    WriteLogger::init(
+        LevelFilter::Info,
+        ConfigBuilder::new().set_time_format_rfc3339().build(),
+        fs::File::create(log_path).expect("Failed to generate log file"),
+    )
+    .expect("Failed to initialize logger")
 }
 
 fn send_news(
@@ -256,7 +248,10 @@ fn send_news(
         .as_str()
         .replace("{PLACE:ELEMENT}", &elements.join("\n"))
         .as_str()
-        .replace("{PLACE:UNSUBSCRIBE_URL}", &cfg.unsubscribe_url);
+        .replace(
+            "{PLACE:UNSUBSCRIBE_URL}",
+            &format!("{}{}", &cfg.unsubscribe_url, &email),
+        );
 
     let sender = match EmailAddress::new(cfg.email_user.clone()) {
         Ok(addr) => addr,
@@ -286,7 +281,11 @@ fn send_news(
             return Err(());
         }
     };
-    let mail = SendableEmail::new(envelope, "id-00".to_string(), message.into_bytes());
+    let mail = SendableEmail::new(
+        envelope,
+        "hacker-newsletter".to_string(),
+        message.into_bytes(),
+    );
     match smtp.send(mail) {
         Ok(_) => Ok(()),
         Err(e) => {
@@ -297,8 +296,8 @@ fn send_news(
 }
 
 fn main() {
-    init_logger();
     let cfg = get_config().expect("Failed to read config file!");
+    init_logger(&cfg.log_path);
     log::debug!("Read config");
     let db = Connection::open(&cfg.database_path).expect("Failed to open database!");
     log::debug!("Opened Connection with database");
