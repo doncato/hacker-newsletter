@@ -28,7 +28,7 @@ The configuration contains the following fields:
     you could run this app in a cronjob or something similar.
 - The unsubscribe url is just blindly sent in the email along with the recipients address
     (e.g. if unsubscribe_url is set to `https://example.com/unsubscribe?email=` then the unsubscribe link in
-    the email will point to `https://example.com/unsubscribe?email=recipients@example.com`)
+    the email will point to `https://example.com/unsubscribe?email=recipient@example.com`)
 - The Application will attempt to communicate with the SMTP server over `STARTTLS` on Port `587`
 
 **Database:**
