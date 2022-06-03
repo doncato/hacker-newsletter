@@ -2,7 +2,7 @@
 Get top News from Hacker News sent to your Email
 
 # Installation
-Download the binary from the release page as well as the content html file, or clone this repository and build
+Download the binary from the release page as well as the content html (`message.html`) file, or clone this repository and build
 it from source if you have rust installed.
 
 # Usage
