@@ -1,3 +1,4 @@
+use chrono::Local;
 use confy;
 use lettre::{
     smtp::{
@@ -230,6 +231,7 @@ fn send_news(
     html: &str,
     cfg: &AppConfig,
 ) -> Result<(), ()> {
+    let date_now = Local::now();
     let elements: Vec<String> = posts
         .iter()
         .map(|post| {
@@ -245,6 +247,10 @@ fn send_news(
         .collect();
     let message = html
         .replace("{PLACE:RECIPIENT}", &email)
+        .as_str()
+        .replace("{PLACE:SENDER}", &cfg.email_user)
+        .as_str()
+        .replace("{PLACE:DATE}", &date_now.to_rfc2822())
         .as_str()
         .replace("{PLACE:ELEMENT}", &elements.join("\n"))
         .as_str()
